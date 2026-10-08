@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cartographia — Ancient Map Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--parchment:#f5e6c8;--ink:#2c1810;--gold:#b8860b;--aged:#d4a853;--shadow:#1a0f00;--vellum:#faf0dc}
+body{background:var(--ink);color:var(--parchment);font-family:'IM Fell English',serif;overflow-x:hidden;min-height:100vh}
+canvas#map-bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0}
+.vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(26,15,0,.8) 100%);z-index:1;pointer-events:none}
+main{position:relative;z-index:2}
+nav{display:flex;justify-content:space-between;align-items:center;padding:1rem 3rem;background:rgba(26,15,0,.85);backdrop-filter:blur(10px);border-bottom:2px solid var(--gold);position:sticky;top:0;z-index:100}
+.brand{font-family:'Cinzel',serif;font-size:1.6rem;font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 0 20px rgba(184,134,11,.4)}
+.nav-row{display:flex;gap:2rem;align-items:center}
+.nav-row a{color:var(--aged);text-decoration:none;font-size:.85rem;font-family:'Cinzel',serif;transition:.2s;letter-spacing:.05em}
+.nav-row a:hover{color:var(--gold)}
+.hero{min-height:90vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem 2rem;position:relative}
+.scroll-unfurl{background:rgba(245,230,200,.06);border:2px solid rgba(184,134,11,.3);border-radius:4px;padding:3rem;max-width:700px;animation:unfurl 1.2s ease-out forwards;transform-origin:top;position:relative}
+.scroll-unfurl::before,.scroll-unfurl::after{content:"";position:absolute;left:0;right:0;height:20px;background:linear-gradient(to bottom,rgba(184,134,11,.2),transparent)}
+.scroll-unfurl::before{top:0;border-radius:4px 4px 0 0}
+.scroll-unfurl::after{bottom:0;background:linear-gradient(to top,rgba(184,134,11,.2),transparent);border-radius:0 0 4px 4px}
+@keyframes unfurl{from{transform:scaleY(0.1);opacity:0}to{transform:scaleY(1);opacity:1}}
+.hero h1{font-family:'Cinzel',serif;font-size:clamp(2.5rem,6vw,5rem);color:var(--gold);font-weight:900;letter-spacing:.05em;text-shadow:0 0 40px rgba(184,134,11,.5);margin-bottom:1rem;line-height:1.1}
+.hero p{font-style:italic;font-size:1.1rem;color:var(--aged);line-height:1.8;margin-bottom:2rem}
+.compass{width:80px;height:80px;margin:1.5rem auto;animation:compassSpin 20s linear infinite;filter:drop-shadow(0 0 10px rgba(184,134,11,.4))}
+.wind-rose{width:80px;height:80px;display:flex;align-items:center;justify-content:center;font-size:4rem;animation:compassSpin 20s linear infinite}
+@keyframes compassSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.locations-section{padding:4rem 3rem;max-width:1300px;margin:0 auto}
+.section-header{font-family:'Cinzel',serif;font-size:1.8rem;color:var(--gold);text-align:center;margin-bottom:.5rem}
+.section-sub{text-align:center;font-style:italic;color:var(--aged);margin-bottom:2.5rem;font-size:.9rem}
+.filters{display:flex;gap:1rem;justify-content:center;margin-bottom:2rem;flex-wrap:wrap}
+.filter-btn{background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);color:var(--aged);padding:.4rem 1.2rem;cursor:pointer;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.05em;transition:.2s;border-radius:3px}
+.filter-btn:hover,.filter-btn.active{background:rgba(184,134,11,.25);border-color:var(--gold);color:var(--gold)}
+.loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.5rem}
+.loc-card{background:rgba(245,230,200,.05);border:1px solid rgba(184,134,11,.25);border-radius:6px;padding:1.8rem;cursor:pointer;transition:all .4s;position:relative;overflow:hidden}
+.loc-card::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(184,134,11,.05),transparent);opacity:0;transition:.3s}
+.loc-card:hover{transform:translateY(-6px);border-color:rgba(184,134,11,.6);box-shadow:0 20px 40px rgba(0,0,0,.5),0 0 30px rgba(184,134,11,.1)}
+.loc-card:hover::before{opacity:1}
+.loc-rarity{position:absolute;top:1rem;right:1rem;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.2rem .6rem;border-radius:3px}
+.rarity-legendary{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.rarity-epic{background:rgba(168,85,247,.15);color:#c4b5fd;border:1px solid rgba(168,85,247,.3)}
+.rarity-rare{background:rgba(6,182,212,.15);color:#67e8f9;border:1px solid rgba(6,182,212,.3)}
+.loc-name{font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);font-weight:700;margin-bottom:.75rem;margin-right:4rem}
+.loc-type{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--aged);margin-bottom:.75rem}
+.loc-desc{font-style:italic;font-size:.85rem;color:rgba(245,230,200,.7);line-height:1.6;margin-bottom:1rem}
+.loc-legend{font-size:.8rem;color:rgba(212,168,83,.6);border-left:2px solid rgba(184,134,11,.3);padding-left:.75rem;font-style:italic}
+.explore-btn{width:100%;margin-top:1rem;background:linear-gradient(135deg,rgba(184,134,11,.2),rgba(184,134,11,.1));border:1px solid rgba(184,134,11,.4);color:var(--gold);padding:.6rem;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.05em;cursor:pointer;transition:.3s}
+.explore-btn:hover{background:rgba(184,134,11,.3)}
+.modal{display:none;position:fixed;inset:0;background:rgba(26,15,0,.93);backdrop-filter:blur(20px);z-index:200;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-scroll{background:rgba(245,230,200,.06);border:2px solid rgba(184,134,11,.4);max-width:600px;width:90%;padding:3rem;position:relative;font-family:'IM Fell English',serif}
+.modal-close{position:absolute;top:1rem;right:1.2rem;background:none;border:none;color:var(--aged);font-size:1.5rem;cursor:pointer}
+.treasure-list{margin-top:1rem;display:flex;flex-direction:column;gap:.5rem}
+.treasure-item{background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.2);padding:.5rem .8rem;font-size:.85rem;color:var(--aged);display:flex;align-items:center;gap:.5rem}
+.expedition-result{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);padding:1.5rem;border-radius:4px;margin-top:1.5rem;text-align:center;font-style:italic;color:#86efac}
+.monsters{padding:3rem;background:rgba(0,0,0,.3);border-top:1px solid rgba(184,134,11,.1);border-bottom:1px solid rgba(184,134,11,.1);margin:2rem 0}
+.monsters h3{font-family:'Cinzel',serif;color:var(--gold);text-align:center;margin-bottom:1.5rem}
+.monster-row{display:flex;gap:1.5rem;justify-content:center;flex-wrap:wrap}
+.monster-card{background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:1rem 1.5rem;text-align:center;min-width:140px}
+.monster-name{font-family:'Cinzel',serif;font-size:.85rem;color:#fca5a5;margin-bottom:.3rem}
+.monster-region{font-size:.7rem;font-style:italic;color:rgba(245,230,200,.4)}
+.threat{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;margin-top:.3rem}
+.threat-extreme{color:#ef4444}.threat-high{color:#f97316}.threat-medium{color:#eab308}
+footer{text-align:center;padding:2rem;color:rgba(245,230,200,.3);font-size:.8rem;border-top:2px solid rgba(184,134,11,.15);font-family:'Cinzel',serif}
+</style></head><body>
+<canvas id="map-bg"></canvas>
+<div class="vignette"></div>
+<main>
+<nav>
+  <div class="brand">☩ CARTOGRAPHIA</div>
+  <div class="nav-row"><a href="#locations">Locations</a><a href="#monsters">Monsters</a><a href="http://localhost:3004/api/locations" target="_blank">API</a></div>
+</nav>
+<section class="hero">
+  <div class="scroll-unfurl">
+    <div class="wind-rose">🧭</div>
+    <h1>CARTOGRAPHIA</h1>
+    <p>Here be wonders. An ancient atlas of mythical lands and forgotten civilizations, waiting to be rediscovered by the brave of heart.</p>
+    <div class="filters">
+      <button class="filter-btn active" onclick="loadLocs('','',this)">All Locations</button>
+      <button class="filter-btn" onclick="loadLocs('mythical','',this)">⚔️ Mythical</button>
+      <button class="filter-btn" onclick="loadLocs('historical','',this)">🏛️ Historical</button>
+      <button class="filter-btn" onclick="loadLocs('','legendary',this)">👑 Legendary</button>
+    </div>
+  </div>
+</section>
+<section class="locations-section" id="locations">
+  <div class="section-header">Known Lands & Lost Realms</div>
+  <p class="section-sub">Click any location to begin an expedition</p>
+  <div class="loc-grid" id="loc-grid"><div style="text-align:center;padding:3rem;color:var(--aged)">Consulting the ancient maps...</div></div>
+</section>
+<div class="monsters" id="monsters">
+  <h3>⚠️ Creatures of Legend</h3>
+  <div class="monster-row" id="monster-row"></div>
+</div>
+<footer>☩ CARTOGRAPHIA — Ancient Map Explorer | Express.js :3004 | React+D3 Frontend</footer>
+</main>
+<div class="modal" id="modal">
+  <div class="modal-scroll">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<script>
+const API="http://localhost:3004";
+const rarityEmoji={legendary:"👑",epic:"🏛️",rare:"💎"};
+
+// Parchment canvas background
+const canvas=document.getElementById("map-bg");const ctx=canvas.getContext("2d");
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;drawParchment()}
+function drawParchment(){
+  const g=ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  g.addColorStop(0,"#1a0f00");g.addColorStop(0.5,"#0d0800");g.addColorStop(1,"#1a0f00");
+  ctx.fillStyle=g;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Draw grid lines like old map
+  ctx.strokeStyle="rgba(184,134,11,0.06)";ctx.lineWidth=1;
+  for(let x=0;x<canvas.width;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke()}
+  for(let y=0;y<canvas.height;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke()}
+  // Decorative circles
+  ctx.strokeStyle="rgba(184,134,11,0.04)";ctx.lineWidth=2;
+  for(let i=0;i<3;i++){const r=200+i*150;ctx.beginPath();ctx.arc(canvas.width*0.5,canvas.height*0.5,r,0,Math.PI*2);ctx.stroke()}
+}
+window.addEventListener("resize",()=>{resize()});resize();
+
+async function api(p){try{return await(await fetch(API+p)).json()}catch{return null}}
+function toast(m,c="#b8860b"){const el=document.createElement("div");el.style.cssText=`position:fixed;bottom:2rem;right:2rem;background:${c};color:#fff;padding:.8rem 1.2rem;border-radius:4px;z-index:999;font-family:'Cinzel',serif;font-size:.85rem;animation:toastIn .3s ease;max-width:280px`;el.textContent=m;document.body.appendChild(el);setTimeout(()=>el.remove(),4000)}
+async function api2(p,m,b){try{const r=await fetch(API+p,{method:m,headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return await r.json()}catch{return null}}
+
+async function loadLocs(type="",rarity="",btn){
+  document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+  if(btn)btn.classList.add("active");
+  let q="";if(type)q+=`?type=${type}`;if(rarity)q+=`${q?"&":"?"}rarity=${rarity}`;
+  const r=await api("/api/locations"+q);if(!r?.data)return;
+  document.getElementById("loc-grid").innerHTML=r.data.map(l=>`
+    <div class="loc-card" onclick="openLoc(${l.id})">
+      <div class="loc-rarity rarity-${l.rarity}">${rarityEmoji[l.rarity]||"📍"} ${l.rarity}</div>
+      <div class="loc-name">${l.name}</div>
+      <div class="loc-type">${l.type} · ${l.era}</div>
+      <div class="loc-desc">${l.description}</div>
+      <div class="loc-legend">${l.legend}</div>
+      <button class="explore-btn">⚔️ Begin Expedition</button>
+    </div>`).join("");
+}
+
+async function openLoc(id){
+  const r=await api(`/api/locations/${id}`);if(!r?.data)return;
+  const l=r.data;
+  document.getElementById("modal-body").innerHTML=`
+    <div style="font-family:'Cinzel',serif;color:var(--gold);font-size:.7rem;letter-spacing:.1em;margin-bottom:.75rem">${l.type.toUpperCase()} · ${l.era.toUpperCase()} · ${l.rarity.toUpperCase()}</div>
+    <h2 style="font-family:'Cinzel',serif;font-size:2rem;color:var(--gold);margin-bottom:1rem">${l.name}</h2>
+    <p style="font-style:italic;color:rgba(245,230,200,.7);line-height:1.7;margin-bottom:1rem">${l.description}</p>
+    <p style="color:rgba(212,168,83,.6);border-left:2px solid rgba(184,134,11,.4);padding-left:.75rem;font-style:italic;font-size:.85rem;margin-bottom:1.5rem">${l.legend}</p>
+    <div style="font-family:'Cinzel',serif;color:var(--aged);font-size:.8rem;margin-bottom:.5rem">⚱️ Known Treasures:</div>
+    <div class="treasure-list">${l.treasures.map(t=>`<div class="treasure-item">✦ ${t}</div>`).join("")}</div>
+    <div style="font-size:.8rem;color:rgba(245,230,200,.4);margin-top:1rem;font-style:italic">👁️ ${l.visitors?.toLocaleString()||"Unknown"} expeditions recorded</div>
+    <button onclick="explore(${l.id},'${l.name}')" style="width:100%;margin-top:1.5rem;background:linear-gradient(135deg,rgba(184,134,11,.3),rgba(184,134,11,.15));border:1px solid rgba(184,134,11,.5);color:var(--gold);padding:.8rem;font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.05em;cursor:pointer">⚔️ Launch Expedition</button>
+    <div id="expedition-result"></div>`;
+  document.getElementById("modal").classList.add("open");
+}
+
+async function explore(id,name){
+  const r=await api(`/api/explore/${id}`);if(!r?.expedition)return;
+  const e=r.expedition;
+  const res=document.getElementById("expedition-result");
+  res.innerHTML=`<div class="expedition-result">${e.message}${e.treasure?`<br><br>💎 Treasure: <strong>${e.treasure}</strong>`:""}${e.dangerLevel?`<br><br>⚠️ Danger Level: ${e.dangerLevel.toUpperCase()}`:""}${e.duration?`<br>⏱️ Duration: ${e.duration} days`:""}</div>`;
+}
+
+async function loadMonsters(){
+  const r=await api("/api/monsters");if(!r?.data)return;
+  document.getElementById("monster-row").innerHTML=r.data.map(m=>`
+    <div class="monster-card">
+      <div class="monster-name">${m.name}</div>
+      <div class="monster-region">${m.region}</div>
+      <div class="threat threat-${m.threat}">${m.threat.toUpperCase()}</div>
+    </div>`).join("");
+}
+
+function closeModal(){document.getElementById("modal").classList.remove("open")}
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+loadLocs();loadMonsters();
+</script></body></html>
